@@ -1,0 +1,44 @@
+/**
+ * For more details on how to configure Wrangler, refer to:
+ * https://developers.cloudflare.com/workers/wrangler/configuration/
+ */
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "fashion-trend-tracker",
+	"main": "src/index.ts",
+	"compatibility_date": "2026-09-16",
+	"compatibility_flags": [
+		"global_fetch_strictly_public"
+	],
+	"observability": {
+		"enabled": true
+	},
+	"upload_source_maps": true,
+	/**
+	 * 매일 00:10(UTC) = 한국시간 09:10에 일별 트렌드 스냅샷을 계산한다.
+	 * cron 표현식은 UTC 기준이다.
+	 */
+	"triggers": {
+		"crons": [
+			"10 0 * * *"
+		]
+	},
+	/**
+	 * 일별 스냅샷(오늘/전날 비교, 급증 예상 키워드)을 저장하는 KV 네임스페이스.
+	 * `wrangler kv namespace create TREND_SNAPSHOTS` 실행 후 발급된 id를 채워야 한다.
+	 */
+	"kv_namespaces": [
+		{
+			"binding": "TREND_SNAPSHOTS",
+			"id": "bf497a0bd1864f19894cecbb31ae9a6f",
+			"remote": true
+		}
+	]
+	/**
+	 * Environment Variables
+	 * https://developers.cloudflare.com/workers/wrangler/configuration/#environment-variables
+	 * 기상청(공공데이터포털) 단기예보 API 인증키를 사용하려면 아래처럼 secret으로 등록한다.
+	 * `wrangler secret put KMA_SERVICE_KEY`
+	 * 키가 없으면 날씨 연동 없이 시즌 캘린더만으로 동작한다.
+	 */
+}
