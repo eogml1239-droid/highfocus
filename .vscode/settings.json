@@ -1,0 +1,49 @@
+{
+  // ── 렉 완화 설정 ─────────────────────────────────────────────
+  // VS Code / Kiro 가 무거운 폴더를 인덱싱·감시·검색하지 않게 해서
+  // 저사양 PC에서도 가볍게 동작하도록 한다.
+
+  // 1) 파일 탐색기에서 숨김 (화면 부하 감소)
+  "files.exclude": {
+    "**/node_modules": true,
+    "**/.wrangler": true,
+    "error-stack-parser-es": true,
+    "youch": true,
+    "generated-videos": true
+  },
+
+  // 2) 파일 변경 감시에서 제외 (CPU·배터리 부하의 가장 큰 원인)
+  "files.watcherExclude": {
+    "**/node_modules/**": true,
+    "**/.wrangler/**": true,
+    "**/.git/**": true,
+    "**/generated-videos/**": true,
+    "**/error-stack-parser-es/**": true,
+    "**/youch/**": true,
+    "**/*.mp4": true,
+    "**/*.png": true,
+    "**/*.jpeg": true
+  },
+
+  // 3) 전체 검색에서 제외 (검색이 느려지는 원인)
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/.wrangler": true,
+    "**/package-lock.json": true,
+    "error-stack-parser-es": true,
+    "youch": true,
+    "generated-videos": true,
+    "**/실사자료/**": true
+  },
+
+  // 4) 대용량 미디어는 코드 편집기가 아니라 뷰어로만 (메모리 절약)
+  "workbench.editorAssociations": {
+    "*.mp4": "default",
+    "*.png": "default",
+    "*.jpeg": "default"
+  },
+
+  // 5) 자동 타입 인식 범위를 이 프로젝트로 한정 (TS 서버 부하 감소)
+  "typescript.tsserver.maxTsServerMemory": 2048,
+  "typescript.disableAutomaticTypeAcquisition": true
+}

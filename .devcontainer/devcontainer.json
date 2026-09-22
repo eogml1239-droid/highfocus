@@ -1,0 +1,35 @@
+{
+  // ── GitHub Codespaces / Dev Container 설정 ───────────────────
+  // PC 사양이 부담될 때: GitHub 저장소 → Code ▸ Codespaces ▸ Create
+  // 를 누르면 브라우저 안에서 완전한 개발환경이 열린다.
+  // 무거운 작업이 GitHub 클라우드에서 돌아가므로 내 PC는 렉이 없다.
+  "name": "fashion-trend-tracker",
+  "image": "mcr.microsoft.com/devcontainers/typescript-node:22",
+
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "22"
+    }
+  },
+
+  // 컨테이너가 만들어질 때 의존성 자동 설치
+  "postCreateCommand": "npm install",
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode"
+      ]
+    }
+  },
+
+  // wrangler dev 기본 포트
+  "forwardPorts": [8787],
+  "portsAttributes": {
+    "8787": {
+      "label": "wrangler dev",
+      "onAutoForward": "notify"
+    }
+  }
+}
