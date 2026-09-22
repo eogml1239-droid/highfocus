@@ -12,10 +12,11 @@
 ## 초기 설정
 
 ```powershell
-cd fashion-trend-tracker
+# 저장소 루트가 곧 이 프로젝트다. 하위 폴더로 이동하지 않는다.
 npm install
 
-# KV 네임스페이스 생성 후 wrangler.jsonc의 id를 교체
+# KV 네임스페이스는 이미 생성되어 wrangler.jsonc에 id가 등록돼 있다.
+# 새 계정에서 처음 세팅할 때만 아래를 실행하고, 발급된 id로 교체한다.
 npx wrangler kv namespace create TREND_SNAPSHOTS
 
 # (선택) 기상청 서비스키 등록 - 없으면 캘린더 기반으로만 동작
@@ -27,6 +28,21 @@ npx wrangler secret put ADMIN_TOKEN
 npm run cf-typegen
 npm run dev
 ```
+
+## 배포
+
+`main` 브랜치에 커밋이 올라가면 **Cloudflare Workers Builds가 자동으로 빌드·배포**한다.
+수동 배포는 필요 없다. 빌드 로그는 Cloudflare 대시보드 → 해당 Worker → Deployment 에서 확인한다.
+
+| 설정 | 값 |
+|---|---|
+| Git 저장소 | `eogml1239-droid/highfocus` |
+| Production 브랜치 | `main` |
+| build command | `npm install` |
+| deployment command | `npx wrangler deploy` |
+| root directory | `/` |
+
+로컬에서 직접 배포해야 할 때만 `npm run deploy`를 쓴다(`wrangler login` 필요).
 
 ## API
 
