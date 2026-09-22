@@ -88,7 +88,7 @@ export function buildDailyTrendReport(
 		month,
 		usedWeatherData: today !== null,
 		stats: stats.sort((a, b) => b.score - a.score),
-		upcomingSurgeKeywords: computeUpcomingSurge(month),
+		upcomingSurgeKeywords: computeUpcomingSurge(date, month),
 	};
 }
 
@@ -97,13 +97,17 @@ export function buildDailyTrendReport(
  * "앞으로 뜰 가능성이 있는 키워드"로 제시한다. 순수 캘린더 비교이므로
  * 날씨 데이터 여부와 무관하게 항상 계산 가능하다.
  */
-function computeUpcomingSurge(month: number): readonly UpcomingSurgeKeyword[] {
+function computeUpcomingSurge(date: string, month: number): readonly UpcomingSurgeKeyword[] {
 	const nextMonth = month === 12 ? 1 : month + 1;
+	// 12월 리포트의 "다음 달"은 이듬해 1월이므로 연도를 넘긴다.
+	const nextYear = Number(date.slice(0, 4)) + (month === 12 ? 1 : 0);
+	const expectedMonth = `${nextYear}-${String(nextMonth).padStart(2, "0")}`;
+
 	const current = keywordsForMonth(month);
 	const next = keywordsForMonth(nextMonth);
 	const currentByKeyword = new Map(current.map((k) => [k.keyword, k.baseWeight]));
 
-	const surges: UpcomingSurgeKeyword[] = [];
+	const surges: (UpcomingSurgeKeyword & { readonly increase: number })[] = [];
 	for (const kw of next) {
 		const currentWeight = currentByKeyword.get(kw.keyword) ?? 0;
 		const increase = kw.baseWeight - currentWeight;
@@ -115,9 +119,13 @@ function computeUpcomingSurge(month: number): readonly UpcomingSurgeKeyword[] {
 					currentWeight === 0
 						? `${nextMonth}월에 새로 시즌 진입이 예상되는 디자인`
 						: `${nextMonth}월로 갈수록 검색 비중이 커질 것으로 예상 (현재 ${currentWeight} → ${kw.baseWeight})`,
-				expectedMonth: `${nextMonth}`.padStart(2, "0"),
+				expectedMonth,
+				increase,
 			});
 		}
 	}
-	return surges.sort((a, b) => b.expectedMonth.localeCompare(a.expectedMonth));
+	// 모두 같은 달이므로 월 문자열이 아니라 상승폭이 큰 순으로 정렬한다.
+	return surges
+		.sort((a, b) => b.increase - a.increase)
+		.map(({ increase: _increase, ...surge }) => surge);
 }

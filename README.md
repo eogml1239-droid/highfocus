@@ -38,6 +38,34 @@ npm run dev
 
 > `ADMIN_TOKEN` secret이 없으면 `/trends/run`은 항상 401을 반환한다.
 
+## 날씨 보정 켜기 (`KMA_SERVICE_KEY`)
+
+키가 없으면 `usedWeatherData: false`로 동작하며 점수가 매일 `baseWeight` 고정값이 된다.
+이 경우 같은 달 안에서는 점수가 변하지 않으므로 `changePercent`는 계속 `0`이다. 정상 동작이다.
+
+날씨 보정을 켜면 당일 기온으로 키워드별 점수가 매일 달라지고, 그때부터 `changePercent`가 의미를 갖는다.
+
+1. [공공데이터포털](https://www.data.go.kr)에서 **기상청_단기예보 ((구)_동네예보) 조회서비스** 활용 신청
+2. 발급된 **일반 인증키(Decoding)** 를 등록한다 — Encoding 키를 넣으면 이중 인코딩되어 실패한다
+
+```powershell
+npx wrangler secret put KMA_SERVICE_KEY
+```
+
+또는 대시보드에서 워커 → Settings → Variables and Secrets → `KMA_SERVICE_KEY` 추가 (재배포 불필요).
+
+지역을 서울이 아닌 곳으로 바꾸려면 격자 좌표를 변수로 지정한다(기본값 서울 중구 `60, 127`).
+
+| 변수 | 설명 |
+|---|---|
+| `WEATHER_NX` | 기상청 격자 X 좌표 |
+| `WEATHER_NY` | 기상청 격자 Y 좌표 |
+
+> 구현 주의: `TMN`(일 최저)·`TMX`(일 최고)는 발표 시각에 따라 응답에 없을 수 있다.
+> cron이 도는 09:10 KST에는 `base_time=0800`이 쓰이는데, 이때 오늘의 `TMN`(06시 항목)은
+> 이미 지나가 응답에 포함되지 않는다. 그래서 `TMN`/`TMX`가 없으면 해당 날짜의 시간별
+> 기온(`TMP`)에서 min/max를 직접 계산해 폴백한다.
+
 ## 한계
 
 - 실제 검색 플랫폼(네이버/구글/무신사 등) 검색량과 연동된 값이 아니라, 계절 반복성에 기반한 추정치다.

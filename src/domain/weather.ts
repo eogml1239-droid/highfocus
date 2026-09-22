@@ -32,10 +32,46 @@ export function isTemperatureTriggered(
 	return true;
 }
 
+interface KmaForecastItem {
+	readonly category: string;
+	readonly fcstDate: string; // YYYYMMDD
+	readonly fcstTime: string; // HHmm
+	readonly fcstValue: string;
+}
+
+interface KmaResponse {
+	readonly response?: {
+		readonly header?: { readonly resultCode?: string; readonly resultMsg?: string };
+		readonly body?: {
+			readonly items?: { readonly item?: readonly KmaForecastItem[] };
+		};
+	};
+}
+
+/** "20260922" → "2026-09-22" */
+function toIsoDate(yyyymmdd: string): string {
+	return `${yyyymmdd.slice(0, 4)}-${yyyymmdd.slice(4, 6)}-${yyyymmdd.slice(6, 8)}`;
+}
+
+function toFiniteNumber(raw: string | undefined): number | null {
+	if (raw === undefined) {
+		return null;
+	}
+	const parsed = Number(raw);
+	return Number.isFinite(parsed) ? parsed : null;
+}
+
 /**
- * 기상청 단기예보(getVilageFcst) 응답 중 TMN(최저)/TMX(최고) 항목만 추출해
- * DailyTemperature로 변환한다. 서비스키가 없거나 호출이 실패하면 null을 반환하고,
- * 상위 로직은 캘린더 기반 추정으로 폴백한다.
+ * 기상청 단기예보(getVilageFcst)에서 지정한 날짜의 최저/최고기온을 구한다.
+ *
+ * TMN(일 최저)·TMX(일 최고)는 하루 중 특정 발표 시각에만 포함된다. 예를 들어
+ * base_time=0800으로 조회하면 오늘의 TMN(06시 항목)은 이미 지나가서 응답에 없다.
+ * 따라서 TMN/TMX가 있으면 그대로 쓰고, 없으면 **해당 날짜의 시간별 기온(TMP)에서
+ * 직접 min/max를 계산**해 폴백한다. 이렇게 하지 않으면 어떤 발표 시각에는 항상
+ * null이 되어 날씨 보정이 조용히 비활성화된다.
+ *
+ * 서비스키가 없거나 호출/파싱이 실패하면 null을 반환하고, 상위 로직은
+ * 캘린더 기반 추정으로 폴백한다.
  *
  * 참고: https://www.data.go.kr (기상청_단기예보 ((구)_동네예보) 조회서비스)
  */
@@ -45,12 +81,14 @@ export async function fetchShortTermTemperature(
 	ny: number,
 	baseDate: string,
 	baseTime: string,
+	targetDate: string,
 ): Promise<DailyTemperature | null> {
 	const endpoint =
 		"https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getVilageFcst";
 	const params = new URLSearchParams({
 		serviceKey,
-		numOfRows: "200",
+		// 하루치 전체(시간별 12개 카테고리 × 24시간)를 확보하려면 200으로는 부족하다.
+		numOfRows: "1000",
 		pageNo: "1",
 		dataType: "JSON",
 		base_date: baseDate,
@@ -64,23 +102,38 @@ export async function fetchShortTermTemperature(
 		if (!response.ok) {
 			return null;
 		}
-		const body = (await response.json()) as {
-			response?: {
-				body?: {
-					items?: { item?: readonly { category: string; fcstValue: string }[] };
-				};
-			};
-		};
-		const items = body.response?.body?.items?.item ?? [];
-		const tmn = items.find((item) => item.category === "TMN")?.fcstValue;
-		const tmx = items.find((item) => item.category === "TMX")?.fcstValue;
-		if (tmn === undefined || tmx === undefined) {
+		const body = (await response.json()) as KmaResponse;
+		// 기상청은 오류도 HTTP 200으로 돌려주므로 resultCode를 반드시 확인한다.
+		if (body.response?.header?.resultCode !== "00") {
+			return null;
+		}
+
+		const forDate = (body.response?.body?.items?.item ?? []).filter(
+			(item) => item.fcstDate === targetDate,
+		);
+		if (forDate.length === 0) {
+			return null;
+		}
+
+		const hourly = forDate
+			.filter((item) => item.category === "TMP")
+			.map((item) => toFiniteNumber(item.fcstValue))
+			.filter((value): value is number => value !== null);
+
+		const min =
+			toFiniteNumber(forDate.find((item) => item.category === "TMN")?.fcstValue) ??
+			(hourly.length > 0 ? Math.min(...hourly) : null);
+		const max =
+			toFiniteNumber(forDate.find((item) => item.category === "TMX")?.fcstValue) ??
+			(hourly.length > 0 ? Math.max(...hourly) : null);
+
+		if (min === null || max === null) {
 			return null;
 		}
 		return {
-			date: baseDate,
-			minCelsius: Number(tmn),
-			maxCelsius: Number(tmx),
+			date: toIsoDate(targetDate),
+			minCelsius: min,
+			maxCelsius: max,
 		};
 	} catch {
 		return null;
