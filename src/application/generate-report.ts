@@ -40,7 +40,15 @@ export async function generateAndStoreTodayReport(env: Env, now: Date = new Date
 		const { baseDate, baseTime } = latestBaseTime(now);
 		const nx = env.WEATHER_NX ? Number(env.WEATHER_NX) : SEOUL_NX;
 		const ny = env.WEATHER_NY ? Number(env.WEATHER_NY) : SEOUL_NY;
-		temperature = await fetchShortTermTemperature(env.KMA_SERVICE_KEY, nx, ny, baseDate, baseTime);
+		temperature = await fetchShortTermTemperature(
+			env.KMA_SERVICE_KEY,
+			nx,
+			ny,
+			baseDate,
+			baseTime,
+			// 리포트 대상일(KST) 예보만 추려내기 위한 기준. base_date와 다를 수 있다.
+			date.replace(/-/g, ""),
+		);
 	}
 
 	const previous = await loadSnapshot(env.TREND_SNAPSHOTS, previousDateOf(date));
