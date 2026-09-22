@@ -1,0 +1,19 @@
+# dependencies
+node_modules/
+
+# wrangler / cloudflare
+.wrangler/
+.dev.vars
+.dev.vars.*
+dist/
+
+# stray dependency copies that must never be committed
+error-stack-parser-es/
+youch/
+
+# generated media samples (not project source)
+generated-videos/
+
+# logs / os
+*.log
+.DS_Store
